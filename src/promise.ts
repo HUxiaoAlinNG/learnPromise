@@ -5,6 +5,8 @@ enum PromiseState {
   REJECTED = "REJECTED",
 }
 
+// 根据规范2.3 The Promise Resolution Procedure进行实现
+// 兼容所有符合Promises/A+规范 库
 const resolvePromise = (
   promise2: Promise1,
   x: any,
@@ -28,16 +30,12 @@ const resolvePromise = (
           x,
           // 递归，避免y还是promise
           (y: any) => {
-            if (isCalled) {
-              return;
-            }
+            if (isCalled) return;
             isCalled = true;
             resolvePromise(promise2, y, resolve, reject);
           },
           (r: any) => {
-            if (isCalled) {
-              return;
-            }
+            if (isCalled) return;
             isCalled = true;
             reject(r);
           },
@@ -46,9 +44,7 @@ const resolvePromise = (
         resolve(x)
       }
     } catch (error) {
-      if (isCalled) {
-        return;
-      }
+      if (isCalled) return;
       isCalled = true;
       reject(error)
     }
@@ -58,8 +54,8 @@ const resolvePromise = (
 }
 
 export default class Promise1 {
-  value: any;   // 成功 返回值
-  reason: any;  // 失败 返回值
+  value: any;   // 成功 返回值,规范1.3 “value” is any legal JavaScript value (including undefined, a thenable, or a promise).
+  reason: any;  // 失败 返回值,规范1.5 “reason” is a value that indicates why a promise was rejected.
   onFulfilledCbs: Function[];  // 收集 成功后执行的 函数
   onRejectedCbs: Function[];   // 收集 失败后执行的 函数
   state: PromiseState  // promise 状态
@@ -74,7 +70,7 @@ export default class Promise1 {
     // 内部提供两个方法，resolve/reject，用来更改状态
     // resolve 触发成功状态，reject触发失败状态
     // 状态只能从 等待中 => 已成功 或者 等待中 => 已失败
-    const resolve = (value: any): Promise1 | void => {
+    const resolve = (value: any) => {
       if (this.state === PromiseState.PENDING) {
         this.state = PromiseState.FULFILLED;
         this.value = value;
@@ -100,17 +96,17 @@ export default class Promise1 {
       reject(error);
     }
   }
-
   // 规范2.2.4 onFulfilled or onRejected must not be called until the execution context stack contains only platform code. [3.1].
-  // 根据3.1提示，需异步执行 onFulfilled/onRejected
-  then(onFulfilled?: Function, onRejected?: Function) {
+  // 根据3.1提示，需异步执行 onFulfilled/onRejected (此函数实现使用setTimeout)
+  then(onFulfilled?: Function, onRejected?: Function): Promise1 {
     const newOnFulfilled = typeof onFulfilled === "function" ? onFulfilled : (v: any) => v;
     const newOnRejected = typeof onRejected === "function" ? onRejected : (err: Error) => { throw err };
-    let promise2 = new Promise1((resolve: (value: any) => void, reject: (reason: any) => void) => {
+    const promise2 = new Promise1((resolve: (value: any) => void, reject: (reason: any) => void) => {
       // 已成功
       if (this.state === PromiseState.FULFILLED) {
         setTimeout(() => {
           try {
+            // 规范 2.2.2.1 it must be called after promise is fulfilled, with promise’s value as its first argument,故为newOnFulfilled(this.value)
             const x = newOnFulfilled(this.value);
             resolvePromise(promise2, x, resolve, reject);
           } catch (error) {
@@ -122,6 +118,7 @@ export default class Promise1 {
       if (this.state === PromiseState.REJECTED) {
         setTimeout(() => {
           try {
+            // 规范2.2.3.1 it must be called after promise is rejected, with promise’s reason as its first argument,故为newOnRejected(this.reason)
             const r = newOnRejected(this.reason);
             resolvePromise(promise2, r, resolve, reject);
           } catch (error) {
@@ -153,7 +150,10 @@ export default class Promise1 {
         })
       }
     });
+    // 规范2.2.7 then must return a promise [3.3].
     return promise2;
   }
 
 }
+
+Promise

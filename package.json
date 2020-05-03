@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node -r ts-node/register --trace-warnings ./src/test.ts"
+    "test": "node -r ts-node/register --trace-warnings ./src/test.ts",
+    "build": "npm run clean && npm run compile",
+    "clean": "gts clean",
+    "compile": "tsc -p ."
   },
   "author": "",
   "license": "ISC",
