@@ -1,4 +1,4 @@
-import Promise1 from "./promise";
+import Promise1 from "./promise1";
 const promisesAplusTests = require("promises-aplus-tests");
 
 (Promise1 as any).defer = (Promise1 as any).deferred = () => {
